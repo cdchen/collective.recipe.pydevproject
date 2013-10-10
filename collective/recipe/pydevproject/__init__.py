@@ -47,7 +47,7 @@ class Recipe:
             if v:
                 variables[k] = v
 
-        s_var('django-manager-path', 'DJANGO_MANAGE_LOCATION')
+        s_var('django-manage-path', 'DJANGO_MANAGE_LOCATION')
         s_var('django-settings-module', 'DJANGO_SETTINGS_MODULE')
 
         self.variables = variables
