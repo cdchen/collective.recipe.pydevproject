@@ -4,6 +4,9 @@ import zc.recipe.egg
 import copy
 import glob
 import xml.etree.ElementTree as ET
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Recipe:
@@ -20,8 +23,35 @@ class Recipe:
             print("python_interpreter is deprecated, use python-interpreter instead.")
             self.options['python-interpreter'] = options['python_interpreter']
 
-
     def install(self):
+        ## For support custom Eclipse natures.
+        natures = ['org.python.pydev.pythonNature']
+        for nature in self.options.get('natures', '').split():
+            natures.append(nature)
+
+        ## Check using Pydev-Django nature.
+        use_django_nature = self.options.get('use-django-nature', 0)
+        if use_django_nature:
+            natures.append('org.python.pydev.django.djangoNature')
+        self.natures = set(natures)
+
+        ## For support custom Eclipse variables.
+        variables = {}
+        for variable in self.options.get('variables', '').split():
+            var_key, var_value = variable.split('=')
+            variables[var_key] = var_value
+
+        ## Checking django variables.
+        def s_var(o, k):
+            v = self.options.get(o, None)
+            if v:
+                variables[k] = v
+
+        s_var('django-manager-path', 'DJANGO_MANAGE_LOCATION')
+        s_var('django-settings-module', 'DJANGO_SETTINGS_MODULE')
+
+        self.variables = variables
+
         requirements, ws = self.egg.working_set()
         external_deps_paths=[f.location for f in ws]
         # src should not be count as an external dependency
@@ -44,7 +74,11 @@ class Recipe:
         ET.SubElement(build_cmd, "name").text = "org.python.pydev.PyDevBuilder"
         ET.SubElement(build_cmd, "arguments")
         natures = ET.SubElement(project, "natures")
-        ET.SubElement(natures, "nature").text = "org.python.pydev.pythonNature"
+
+        ## For support custom-natures.
+        #ET.SubElement(natures, "nature").text = "org.python.pydev.pythonNature"
+        for nature in self.natures:
+            ET.SubElement(natures, 'nature').text = nature
         ET.ElementTree(project).write('.project', "UTF-8")
 
         # TODO: add header: "<?eclipse-pydev version="1.0"?>"
@@ -53,7 +87,7 @@ class Recipe:
         path_property.attrib['name'] = "org.python.pydev.PROJECT_SOURCE_PATH"
         for src in self.options['src'].split():
             ET.SubElement(path_property, "path").text = \
-                "/{name}/{src}".format(name=self.options['name'], src=src)
+                "/{name}/{src}".format(name='${PROJECT_DIR_NAME}', src=src)
         py_version = ET.SubElement(pydev_project, "pydev_property",
                                 name="org.python.pydev.PYTHON_PROJECT_VERSION")
         py_version.text = self.options['python-version']
@@ -64,6 +98,14 @@ class Recipe:
                         name="org.python.pydev.PROJECT_EXTERNAL_SOURCE_PATH")
         for path in external_deps_paths + self.extra_paths:
             ET.SubElement(libs, "path").text = path
+
+        ## For support PROJECT_VARIABLE_SUBSTITUTION
+        variables = ET.SubElement(pydev_project, "pydev_variables_property", name="org.python.pydev.PROJECT_VARIABLE_SUBSTITUTION")
+        for key, value in self.variables.items():
+            key_element = ET.SubElement(variables, "key")
+            key_element.text = key
+            value_element = ET.SubElement(variables, "value")
+            value_element.text = value
         ET.ElementTree(pydev_project).write('.pydevproject', 'UTF-8')
         return ()
 
