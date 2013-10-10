@@ -53,6 +53,12 @@ Add your recipe configuration to ``buildout.cfg`` and include it in ``${buildout
         ${buildout:directory}/some/library
         ${buildout:directory}/lib/*
     projects = some-other-project
+    use-django-nature = 1
+    variables = 
+        key1=value1
+        key2=value2
+    django-settings-module = myproject.settings
+    django-manage-path = bin/django
 
 Options
 -------
@@ -75,6 +81,20 @@ eggs
   You don't need to include transitive dependencies. This is done automatically.
 projects
   Referenced projects (by name) as they appear in Eclipse.
+use-django-nature
+  Define project whatever support django development. (0: disable, 1: enable)
+variables
+  Define project variables of Eclipse. Example:
+  ::
+
+        variables =
+            key1=value1
+            key2=value2
+django-settings-module
+  Set the Django settings module name, like: ``myproject.settings``.
+django-manage-path
+  Set the ``manage.py`` path, ``bin/django`` if you use djangorecipe.
+
 
 Source
 ------
